@@ -1,3 +1,4 @@
+import argparse
 import hashlib
 import shutil
 from pathlib import Path
@@ -69,8 +70,8 @@ def find_duplicates(files: list[Path]) -> dict[str, list[Path]]:
         return dupe_dict
 
 
-def organize_file(file_path: Path, dest_root: Path) -> None:
-    """Copy file_path into dest_root/<category>/, creating the folder if needed."""
+def organize_file(file_path: Path, dest_root: Path, move: bool = False) -> None:
+    """Copy (or move, if move=True) file_path into dest_root/<category>/, creating the folder if needed."""
     folder = categorize(file_path=file_path)
 
     with stats_lock:
@@ -82,24 +83,26 @@ def organize_file(file_path: Path, dest_root: Path) -> None:
 
     dest_folder = dest_root / folder
     dest_folder.mkdir(parents=True, exist_ok= True)
-    shutil.copy2(file_path,dest_folder)
-
+    if move:
+        shutil.move(file_path,dest_folder)
+    else:
+        shutil.copy2(file_path,dest_folder)
     return
 
-def worker(q: queue.Queue, dest_root: Path) -> None:
+def worker(q: queue.Queue, dest_root: Path, move: bool = False) -> None:
     while True:
         file_path = q.get()
         if file_path is None:
             q.task_done()
             break
-        organize_file(file_path, dest_root)
+        organize_file(file_path, dest_root,move)
         q.task_done()
 
-def organize_all_files(files: list[Path], dest_root: Path, num_workers=4):
+def organize_all_files(files: list[Path], dest_root: Path, move: bool = False, num_workers=4):
     q = queue.Queue()
     for f in files:
         q.put(f)
-    workers = [threading.Thread(target=worker,args=(q,dest_root)) for _ in range(num_workers)]
+    workers = [threading.Thread(target=worker,args=(q,dest_root,move)) for _ in range(num_workers)]
     for w in workers:
         w.start()
 
@@ -113,6 +116,10 @@ def organize_all_files(files: list[Path], dest_root: Path, num_workers=4):
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Organize files by type.")
+    parser.add_argument("--move", action="store_true", help="Move files instead of copying (default: copy)")
+    args = parser.parse_args()
+
     source = Path("test_files/incoming")
     dest = Path("test_files/organized")
 
@@ -122,9 +129,10 @@ def main():
     for d,v in dupes.items():
         print(v)
 
-    organize_all_files(files,dest)
+    organize_all_files(files, dest, move=args.move)
 
-    print(f"Organized {len(files)} files into {dest}")
+    action = "Moved" if args.move else "Organized"
+    print(f"{action} {len(files)} files into {dest}")
     for category, count in sorted(stats.items()):
         print(f"  {category}: {count}")
 
