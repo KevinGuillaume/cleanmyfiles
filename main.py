@@ -3,6 +3,7 @@ import shutil
 from pathlib import Path
 import threading
 from concurrent.futures import ThreadPoolExecutor
+import queue
 
 CATEGORIES = {
     ".jpg": "Images", 
@@ -45,7 +46,7 @@ def hash_file(file_path: Path) -> str:
     """Return the sha256 hex digest of a file's contents."""
     hasher = hashlib.sha256()
     with open(file_path, "rb") as f:
-        for chunk in iter(lambda: f.read(8192), b""):
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
             hasher.update(chunk)
     return hasher.hexdigest()
 
@@ -85,6 +86,31 @@ def organize_file(file_path: Path, dest_root: Path) -> None:
 
     return
 
+def worker(q: queue.Queue, dest_root: Path) -> None:
+    while True:
+        file_path = q.get()
+        if file_path is None:
+            q.task_done()
+            break
+        organize_file(file_path, dest_root)
+        q.task_done()
+
+def organize_all_files(files: list[Path], dest_root: Path, num_workers=4):
+    q = queue.Queue()
+    for f in files:
+        q.put(f)
+    workers = [threading.Thread(target=worker,args=(q,dest_root)) for _ in range(num_workers)]
+    for w in workers:
+        w.start()
+
+    q.join()
+
+    for _ in range(num_workers):
+        q.put(None)
+
+    for w in workers:
+        w.join()
+
 
 def main():
     source = Path("test_files/incoming")
@@ -96,11 +122,7 @@ def main():
     for d,v in dupes.items():
         print(v)
 
-    threads = [threading.Thread(target=organize_file, args=(f,dest)) for f in files]
-    for t in threads:
-        t.start()
-    for t in threads:
-        t.join()
+    organize_all_files(files,dest)
 
     print(f"Organized {len(files)} files into {dest}")
     for category, count in sorted(stats.items()):
