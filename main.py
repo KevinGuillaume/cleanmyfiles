@@ -117,11 +117,19 @@ def organize_all_files(files: list[Path], dest_root: Path, move: bool = False, n
 
 def main():
     parser = argparse.ArgumentParser(description="Organize files by type.")
+    parser.add_argument("source", nargs="?", default="test_files/incoming",
+                         help="Directory to organize (default: test_files/incoming)")
+    parser.add_argument("--dest", default="test_files/organized",
+                         help="Directory to organize files into (default: test_files/organized)")
     parser.add_argument("--move", action="store_true", help="Move files instead of copying (default: copy)")
     args = parser.parse_args()
 
-    source = Path("test_files/incoming")
-    dest = Path("test_files/organized")
+    source = Path(args.source)
+    dest = Path(args.dest)
+
+    if not source.is_dir():
+        print(f"Error: source directory does not exist: {source}")
+        return
 
     files = scan_directory(source)
 

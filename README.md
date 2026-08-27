@@ -10,21 +10,27 @@ No external dependencies, so everything used is in the Python standard library. 
 ## How to Run
 
 ```
-python3 main.py
+python3 main.py [source] [--dest DEST] [--move]
 ```
 
-By default this scans `test_files/incoming/` and copies organized files into `test_files/organized/`, leaving the originals untouched. Any duplicate file groups (identical content, different names) are printed before organizing starts.
+- `source` (optional) — the directory to organize. Defaults to `test_files/incoming/` if omitted.
+- `--dest DEST` (optional) — where organized files go. Defaults to `test_files/organized/`.
+- `--move` (optional) — move files instead of copying them (see below).
 
-To move files instead of copying them (originals are removed from the source folder):
+Examples:
 
 ```
-python3 main.py --move
+python3 main.py                                   # organize the built-in sandbox folder
+python3 main.py ~/Downloads                       # organize ~/Downloads into test_files/organized/
+python3 main.py ~/Downloads --dest ~/Desktop/Sorted   # organize into a custom destination
+python3 main.py ~/Downloads --dest ~/Desktop/Sorted --move   # move instead of copy
 ```
+
+By default, files are copied into the destination, leaving originals untouched. Any duplicate file groups (identical content, different names) are printed before organizing starts.
 
 Copying is the default and recommended mode — it's non-destructive, so a bug or an interrupted run can't lose files. Only use `--move` once you've confirmed a run without the flag organizes things the way you expect.
 
 ## Customization
 
-- **Source and destination folders** — currently hardcoded in `main()` in `main.py` (`source` and `dest` variables). Point them at whatever folder you actually want to clean up.
 - **Categories** — edit the `CATEGORIES` dict at the top of `main.py` to add extensions or change which folder name a given extension maps to. Anything not listed falls into `Other`.
 - **Worker count** — `organize_all_files(..., num_workers=4)` controls how many threads process files concurrently; `find_duplicates` uses a fixed pool of 8 for hashing. Adjust either if you're working with a very large or very small number of files.
