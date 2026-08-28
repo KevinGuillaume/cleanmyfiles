@@ -1,6 +1,7 @@
 import argparse
 import hashlib
 import shutil
+import questionary
 from pathlib import Path
 import threading
 from concurrent.futures import ThreadPoolExecutor
@@ -121,7 +122,9 @@ def main():
                          help="Directory to organize (default: test_files/incoming)")
     parser.add_argument("--dest", default="test_files/organized",
                          help="Directory to organize files into (default: test_files/organized)")
-    parser.add_argument("--move", action="store_true", help="Move files instead of copying (default: copy)")
+    mode_group = parser.add_mutually_exclusive_group()
+    mode_group.add_argument("--move", action="store_true", help="Move files instead of copying")
+    mode_group.add_argument("--copy", action="store_true", help="Copy files (default if neither flag is given)")
     args = parser.parse_args()
 
     source = Path(args.source)
@@ -131,15 +134,32 @@ def main():
         print(f"Error: source directory does not exist: {source}")
         return
 
+    if args.move:
+        move = True
+    elif args.copy:
+        move = False
+    else:
+        choice = questionary.select(
+            "How should files be organized?",
+            choices=[
+                questionary.Choice("Copy (originals stay in place)", value=False),
+                questionary.Choice("Move (originals are relocated)", value=True),
+            ],
+        ).ask()
+        if choice is None:  # user pressed Ctrl-C
+            print("Cancelled.")
+            return
+        move = choice
+
     files = scan_directory(source)
 
     dupes = find_duplicates(files)
     for d,v in dupes.items():
         print(v)
 
-    organize_all_files(files, dest, move=args.move)
+    organize_all_files(files, dest, move=move)
 
-    action = "Moved" if args.move else "Organized"
+    action = "Moved" if move else "Organized"
     print(f"{action} {len(files)} files into {dest}")
     for category, count in sorted(stats.items()):
         print(f"  {category}: {count}")
