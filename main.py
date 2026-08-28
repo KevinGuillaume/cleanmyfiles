@@ -118,8 +118,8 @@ def organize_all_files(files: list[Path], dest_root: Path, move: bool = False, n
 
 def main():
     parser = argparse.ArgumentParser(description="Organize files by type.")
-    parser.add_argument("source", nargs="?", default="test_files/incoming",
-                         help="Directory to organize (default: test_files/incoming)")
+    parser.add_argument("source", nargs="?", default=None,
+                         help="Directory to organize. If omitted, you'll be prompted to select one interactively.")
     parser.add_argument("--dest", default="test_files/organized",
                          help="Directory to organize files into (default: test_files/organized)")
     mode_group = parser.add_mutually_exclusive_group()
@@ -127,12 +127,24 @@ def main():
     mode_group.add_argument("--copy", action="store_true", help="Copy files (default if neither flag is given)")
     args = parser.parse_args()
 
-    source = Path(args.source)
-    dest = Path(args.dest)
+    if args.source is not None:
+        source = Path(args.source)
+        if not source.is_dir():
+            print(f"Error: source directory does not exist: {source}")
+            return
+    else:
+        answer = questionary.path(
+            "Which directory do you want to organize?",
+            default="test_files/incoming",
+            only_directories=True,
+            validate=lambda p: True if Path(p).is_dir() else "That directory doesn't exist.",
+        ).ask()
+        if answer is None:  # user pressed Ctrl-C
+            print("Cancelled.")
+            return
+        source = Path(answer)
 
-    if not source.is_dir():
-        print(f"Error: source directory does not exist: {source}")
-        return
+    dest = Path(args.dest)
 
     if args.move:
         move = True
