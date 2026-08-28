@@ -5,30 +5,35 @@ It scans a source folder, sorts files into subfolders by type (Images, Documents
 
 ## How to Install
 
-No external dependencies, so everything used is in the Python standard library. Just make sure you have Python 3.10+ installed, then clone/download this repo.
+Requires Python 3.10+. Uses one small dependency ([questionary](https://github.com/tmbo/questionary)) for the interactive copy/move prompt, so set up a virtual environment first:
+
+```
+python3 -m venv venv
+./venv/bin/pip install -r requirements.txt
+```
 
 ## How to Run
 
 ```
-python3 main.py [source] [--dest DEST] [--move]
+./venv/bin/python3 main.py [source] [--dest DEST] [--move | --copy]
 ```
 
 - `source` (optional) — the directory to organize. Defaults to `test_files/incoming/` if omitted.
 - `--dest DEST` (optional) — where organized files go. Defaults to `test_files/organized/`.
-- `--move` (optional) — move files instead of copying them (see below).
+- `--move` / `--copy` (optional, mutually exclusive) — pick a mode without being prompted. If you pass neither, you'll get an interactive arrow-key menu to choose Copy or Move at runtime.
 
 Examples:
 
 ```
-python3 main.py                                   # organize the built-in sandbox folder
-python3 main.py ~/Downloads                       # organize ~/Downloads into test_files/organized/
-python3 main.py ~/Downloads --dest ~/Desktop/Sorted   # organize into a custom destination
-python3 main.py ~/Downloads --dest ~/Desktop/Sorted --move   # move instead of copy
+./venv/bin/python3 main.py                                          # interactive prompt, sandbox folder
+./venv/bin/python3 main.py ~/Downloads                               # interactive prompt, real folder
+./venv/bin/python3 main.py ~/Downloads --dest ~/Desktop/Sorted --copy   # non-interactive, for scripts/automation
+./venv/bin/python3 main.py ~/Downloads --dest ~/Desktop/Sorted --move   # non-interactive, moves instead of copies
 ```
 
 By default, files are copied into the destination, leaving originals untouched. Any duplicate file groups (identical content, different names) are printed before organizing starts.
 
-Copying is the default and recommended mode — it's non-destructive, so a bug or an interrupted run can't lose files. Only use `--move` once you've confirmed a run without the flag organizes things the way you expect.
+Copying is the safer mode — non-destructive, so a bug or an interrupted run can't lose files. Only choose Move once you've confirmed a Copy run organizes things the way you expect. `--copy` and `--move` are there specifically so this can still run non-interactively (e.g. from a script or cron job) without hanging on the prompt.
 
 ## Customization
 
